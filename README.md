@@ -2,6 +2,7 @@ Universal Review Analyzer
 A Streamlit dashboard for analyzing customer feedback across any dataset or typed reviews.
 
  Features
+ 
 CSV Upload → Upload datasets with reviews, ratings, and timestamps.
 
 Instant Text Classification → Type a review directly and get Positive/Negative/Neutral sentiment instantly.
@@ -17,11 +18,14 @@ Trend Analysis → Track sentiment changes over time.
 Top Reviews → Highlight most positive and most negative reviews with reasoning.
 
  Design
+ 
 Dark theme with teal/orange accents for a modern, sleek look.
 
 Responsive layout with sidebar navigation.
 
  Tech
+
+ 
 Built with Streamlit.
 
 Sentiment analysis powered by NLTK VADER.
@@ -29,6 +33,8 @@ Sentiment analysis powered by NLTK VADER.
 Smart CSV encoding fallback and auto‑detection of review/rating/timestamp columns.
 
  Run Locally
+
+ 
 bash
 pip install -r requirements.txt
 python -c "import nltk; nltk.download('vader_lexicon')"
