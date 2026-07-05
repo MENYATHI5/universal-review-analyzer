@@ -68,6 +68,22 @@ def get_analyzer():
 
 sia = get_analyzer()
 
+REVIEW_COLUMN_CANDIDATES = [
+    "review",
+    "reviews",
+    "text",
+    "tweet_text",
+    "full_text",
+    "content",
+    "comment",
+    "comments",
+    "feedback",
+    "body",
+    "message",
+]
+RATING_COLUMN_CANDIDATES = ["rating", "stars", "score"]
+TIME_COLUMN_CANDIDATES = ["time", "date", "timestamp", "created", "created_at", "createdat"]
+
 def classify(text: str) -> str:
     if not isinstance(text, str) or not text.strip():
         return "Neutral"
@@ -88,14 +104,16 @@ def smart_read_csv(uploaded) -> pd.DataFrame:
             return pd.read_csv(io.BytesIO(raw), encoding=enc, on_bad_lines="skip")
         except Exception:
             continue
-    return pd.read_csv(io.BytesIO(raw), encoding="latin-1", errors="ignore", on_bad_lines="skip")
+    return pd.read_csv(io.BytesIO(raw), encoding="latin-1", on_bad_lines="skip")
+
+def normalize_column_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(name).lower()).strip("_")
 
 def detect_review_col(df: pd.DataFrame) -> str:
-    candidates = ["review", "reviews", "text", "comment", "content", "feedback", "body"]
-    for c in candidates:
-        for col in df.columns:
-            if c == col.lower().strip():
-                return col
+    normalized = {normalize_column_name(col): col for col in df.columns}
+    for candidate in REVIEW_COLUMN_CANDIDATES:
+        if candidate in normalized:
+            return normalized[candidate]
     # fallback: longest avg string column
     obj_cols = df.select_dtypes(include="object").columns
     if len(obj_cols) == 0: return df.columns[0]
@@ -103,15 +121,23 @@ def detect_review_col(df: pd.DataFrame) -> str:
 
 def detect_rating_col(df):
     for col in df.columns:
-        if "rating" in col.lower() or "stars" in col.lower() or "score" in col.lower():
+        normalized = normalize_column_name(col)
+        if any(candidate in normalized for candidate in RATING_COLUMN_CANDIDATES):
             return col
     return None
 
 def detect_time_col(df):
     for col in df.columns:
-        if any(k in col.lower() for k in ["time", "date", "timestamp", "created"]):
+        normalized = normalize_column_name(col)
+        if any(candidate in normalized for candidate in TIME_COLUMN_CANDIDATES):
             return col
     return None
+
+def clean_review_rows(df: pd.DataFrame, review_col: str) -> pd.DataFrame:
+    cleaned = df.dropna(subset=[review_col]).copy()
+    cleaned[review_col] = cleaned[review_col].astype(str).str.strip()
+    cleaned = cleaned[cleaned[review_col].astype(bool)].copy()
+    return cleaned
 
 def parse_rating(v):
     if pd.isna(v): return None
@@ -159,7 +185,7 @@ st.markdown("<h1>💬 Universal Review <span class='accent'>Analyzer</span></h1>
 st.markdown("<p style='color:#94a3b8;'>NLTK VADER sentiment intelligence for any review dataset.</p>", unsafe_allow_html=True)
 
 if uploaded is None:
-    st.info("👈 Upload a CSV in the sidebar to begin. Works with McDonald's reviews, Amazon, Yelp, app store reviews — any text column.")
+    st.info("👈 Upload a CSV in the sidebar to begin. Works with McDonald's reviews, Amazon, Yelp, app store reviews, Xquik API exports, and other text datasets.")
     st.stop()
 
 with st.spinner("Loading dataset..."):
@@ -178,8 +204,10 @@ time_col = col_c.selectbox("Timestamp column (optional)", ["(none)"] + df.column
 rating_col = None if rating_col == "(none)" else rating_col
 time_col = None if time_col == "(none)" else time_col
 
-df = df.dropna(subset=[review_col]).copy()
-df[review_col] = df[review_col].astype(str)
+df = clean_review_rows(df, review_col)
+if df.empty:
+    st.error("The selected review column has no non-empty review text.")
+    st.stop()
 
 @st.cache_data(show_spinner=False)
 def enrich(df, review_col, rating_col, time_col):
