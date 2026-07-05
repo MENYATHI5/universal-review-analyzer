@@ -32,6 +32,8 @@ Sentiment analysis powered by NLTK VADER.
 
 Smart CSV encoding fallback and auto‑detection of review/rating/timestamp columns.
 
+CSV auto-detection supports common review exports including `text`, `tweet_text`, `full_text`, `comment`, `feedback`, and `body` columns from tools such as Xquik API.
+
  Run Locally
 
  
